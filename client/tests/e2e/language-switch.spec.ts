@@ -65,9 +65,15 @@ test.describe('Language switching', () => {
     }
   })
 
-  test('partners section has locale-aware mortgage link', async ({ page }) => {
+  test('English partners section has locale-aware mortgage link', async ({ page }) => {
     await page.goto('/en')
     const mortgageLinks = page.locator('a[href*="/en/mortgage"]')
+    await expect(mortgageLinks.first()).toBeVisible()
+  })
+
+  test('Kazakh partners section has locale-aware mortgage link', async ({ page }) => {
+    await page.goto('/kz')
+    const mortgageLinks = page.locator('a[href*="/kz/mortgage"]')
     await expect(mortgageLinks.first()).toBeVisible()
   })
 })

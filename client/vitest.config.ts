@@ -27,7 +27,7 @@ export default defineConfig(async () => {
       include: ['tests/unit/**/*.test.ts', 'tests/components/**/*.test.ts'],
       coverage: {
         provider: 'v8',
-        include: ['composables/**/*.ts'],
+        include: ['composables/**/*.ts', 'stores/**/*.ts'],
         reporter: ['text', 'lcov'],
       },
     },

@@ -33,7 +33,7 @@ test.describe('Quiz flow', () => {
     await expect(quiz.locator('.quiz-panel__q')).toBeVisible()
     const opts = quiz.locator('.quiz-panel__opt')
     await expect(opts.first()).toBeVisible()
-    await expect(opts).toHaveCount(await opts.count())
+    expect(await opts.count()).toBeGreaterThan(0)
   })
 
   test('progress bar starts near 0%', async ({ page }) => {

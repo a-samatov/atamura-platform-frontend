@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { formatPhone } from '../../../composables/usePhoneMask'
+import { ref } from 'vue'
+import { formatPhone, usePhoneMask, PHONE_MIN_DIGITS, PHONE_MAX_DIGITS } from '../../../composables/usePhoneMask'
 
 // formatPhone is a pure function — no Vue/Nuxt context needed.
 
@@ -53,5 +54,45 @@ describe('formatPhone', () => {
       const result = formatPhone('7700123')
       expect(result).toBe('+7 (700) 123')
     })
+  })
+})
+
+// ── validatePhone ─────────────────────────────────────────────────────────────
+
+describe('validatePhone', () => {
+  function makeValidator(value: string) {
+    const phoneRef = ref(value)
+    const { validatePhone } = usePhoneMask(phoneRef)
+    return validatePhone
+  }
+
+  it('returns "phone_required" for an empty string', () => {
+    expect(makeValidator('')()).toBe('phone_required')
+  })
+
+  it('returns "phone_required" when only formatting chars are present', () => {
+    // No digit characters — only punctuation
+    expect(makeValidator('+(   ) ---')()).toBe('phone_required')
+  })
+
+  it(`returns "phone_too_short" for fewer than ${PHONE_MIN_DIGITS} digits`, () => {
+    const shortPhone = '+7 (70'  // 3 digits
+    expect(makeValidator(shortPhone)()).toBe('phone_too_short')
+  })
+
+  it('returns "" for a valid 11-digit Kazakh/Russian number', () => {
+    expect(makeValidator('+7 (700) 123-45-67')()).toBe('')
+  })
+
+  it('returns "" at exactly the minimum digit count', () => {
+    // PHONE_MIN_DIGITS digits: e.g. "1234567" → 7 digits
+    const minPhone = '1'.repeat(PHONE_MIN_DIGITS)
+    expect(makeValidator(minPhone)()).toBe('')
+  })
+
+  it(`returns "phone_too_long" for more than ${PHONE_MAX_DIGITS} digits`, () => {
+    // validatePhone reads the raw ref value — set 16 digits directly
+    const tooLong = '1234567890123456'  // 16 digits > PHONE_MAX_DIGITS (15)
+    expect(makeValidator(tooLong)()).toBe('phone_too_long')
   })
 })

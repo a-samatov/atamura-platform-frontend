@@ -120,3 +120,32 @@ describe('useAuthStore.refreshToken()', () => {
     expect(ok).toBe(false)
   })
 })
+
+describe('useAuthStore.fetchMe()', () => {
+  it('updates manager from the API response', async () => {
+    localStorage.setItem('access_token', 'at-abc')
+    setActivePinia(createPinia())
+
+    mockedAxios.get.mockResolvedValueOnce({ data: MANAGER })
+    const store = useAuthStore()
+    await store.fetchMe()
+
+    expect(store.manager?.name).toBe('Ivan')
+    expect(localStorage.getItem('admin_manager')).toBe(JSON.stringify(MANAGER))
+  })
+
+  it('does nothing when not authenticated', async () => {
+    const store = useAuthStore()
+    await store.fetchMe()
+    expect(mockedAxios.get).not.toHaveBeenCalled()
+  })
+
+  it('silently ignores API errors', async () => {
+    localStorage.setItem('access_token', 'at-abc')
+    setActivePinia(createPinia())
+
+    mockedAxios.get.mockRejectedValueOnce(new Error('network'))
+    const store = useAuthStore()
+    await expect(store.fetchMe()).resolves.toBeUndefined()
+  })
+})

@@ -29,12 +29,20 @@ describe('useI18n', () => {
       expect(t('delete')).toBe('Delete')
     })
 
-    it('falls back to Russian for keys missing in EN', () => {
+    it('returns key name for completely unknown keys', () => {
       setLocale('en')
-      // Force a key that exists in RU but not EN by checking the fallback path
       const { t } = useI18n()
-      // All real keys should resolve — unknown keys fall back to the key name
       expect(t('__no_such_key__')).toBe('__no_such_key__')
+    })
+
+    it('returns EN string, not RU fallback, for keys present in both locales', () => {
+      setLocale('en')
+      const { t } = useI18n()
+      // These keys have different values in EN vs RU — confirms EN dict is used
+      expect(t('save')).toBe('Save')
+      expect(t('save')).not.toBe('Сохранить')
+      expect(t('status_new')).toBe('New')
+      expect(t('status_new')).not.toBe('Новая')
     })
   })
 
