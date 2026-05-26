@@ -21,8 +21,9 @@
 ---
 
 > **💼 Репозиторий создан для демонстрации кода работодателям.**  
-> Намеренно опубликована только фронтенд-часть проекта.  
-> Бэкенд (Go + PostgreSQL + Redis), `.env`-файлы и инфраструктурные конфиги в репозиторий не включены.
+> Намеренно опубликована только фронтенд-часть.  
+> Бэкенд (Go + PostgreSQL + Redis) находится в приватном репозитории — подключается автоматически через GitHub Actions при запуске E2E-тестов.  
+> `.env`-файлы и инфраструктурные конфиги в репозиторий не включены.
 
 ---
 
@@ -30,19 +31,41 @@
 
 ```
 atamura-platform/
-├── client/                   # Публичный SSR-портал — Nuxt 3
-│   ├── composables/          # useHomeContent, usePhoneMask, useScrollReveal…
-│   ├── components/sections/  # HeroSection, QuizSection, MapSection…
-│   ├── pages/                # index.vue, en/index.vue, kz/index.vue
-│   └── tests/                # Vitest (unit + component) + Playwright (E2E)
-├── admin/                    # Административная панель — Vue 3 SPA
-│   ├── src/
-│   │   ├── locales/          # ru.ts · kk.ts · en.ts
-│   │   ├── utils/labels.ts   # Переиспользуемые label-функции
-│   │   ├── stores/auth.ts    # Pinia store — JWT + refresh
-│   │   └── views/            # Applications, NewsEditor, Jobs…
-│   └── tests/                # Vitest (unit + store) + Playwright (E2E)
-└── .github/workflows/ci.yml  # GitHub Actions — параллельные unit → E2E
+├── client/                        # Публичный SSR-портал — Nuxt 3
+│   ├── assets/css/                # CSS-переменные, reset, глобальные стили
+│   ├── components/
+│   │   ├── common/                # AppHeader, AppFooter, AppModal, FloatContact…
+│   │   ├── sections/              # HeroSection, QuizSection, MapSection…
+│   │   ├── forms/                 # ApplicationForm, QuizForm, PlanForm
+│   │   ├── kz/, en/               # Локализованные варианты форм
+│   │   └── news/, map/            # NewsCard, YandexMap
+│   ├── composables/               # useHomeContent, usePhoneMask, useApplicationForm,
+│   │                              #   useQuizForm, useLocale, useSanitize…
+│   ├── constants/contact.ts       # Единый источник контактного телефона
+│   ├── pages/
+│   │   ├── index.vue, jk/…        # RU — главная, страницы ЖК, новости, вакансии
+│   │   ├── kz/                    # KZ-версия (полностью независимая структура)
+│   │   └── en/                    # EN-версия (полностью независимая структура)
+│   ├── server/routes/             # sitemap.xml, robots.txt, прокси API и uploads
+│   ├── stores/ui.ts               # Модальные окна, мобильное меню
+│   └── tests/
+│       ├── unit/composables/      # useHomeContent, useApplicationForm, useQuizForm,
+│       │                          #   useLocale, usePhoneMask (formatPhone + validatePhone)
+│       ├── unit/stores/           # useUiStore
+│       ├── components/            # QuizSection (Vue Test Utils)
+│       └── e2e/                   # quiz, language-switch (Playwright)
+│
+├── admin/                         # Административная панель — Vue 3 SPA
+│   └── src/
+│       ├── locales/               # ru.ts · kk.ts · en.ts (~280 строк каждый)
+│       ├── utils/labels.ts        # jkLabel, typeLabel, statusLabel, buildSlug…
+│       ├── stores/auth.ts         # Pinia — JWT + refresh token
+│       ├── views/                 # Applications, NewsEditor, Jobs, Reviews…
+│       └── tests/
+│           ├── unit/              # i18n, labels/slug, auth store (включая fetchMe)
+│           └── e2e/               # login, applications (Playwright)
+│
+└── .github/workflows/ci.yml       # GitHub Actions — unit → typecheck → E2E
 ```
 
 ---
@@ -67,12 +90,21 @@ atamura-platform/
 
 ### Ключевые решения
 
-- **Гибридный рендеринг** — SSR для новостей и вакансий (`/news/**`, `/careers/**`), SSG prerender для страниц ЖК и статики. Роутинг через `routeRules` в `nuxt.config.ts`.
-- **Трёхъязычность RU / KZ / EN** — маршрутизация по URL-пути (`/`, `/kz`, `/en`), `hreflang` + `canonical` на каждой странице, `useHomeContent(locale)` как единый источник контента для всех трёх версий.
-- **Prop-driven компоненты** — все секции (`HeroSection`, `QuizSection`, `MapSection`…) получают типизированный контент через props; нет захардкоженного текста внутри компонентов.
-- **Квалификационный квиз** — многошаговый сбор данных о клиенте, ответы уходят менеджеру ещё до звонка. Маска телефона, валидация, `thank-you`-экран.
-- **SEO** — `useSeoMeta`, Schema.org, динамический `sitemap.xml`, `robots.txt` через Nitro.
-- **Lighthouse 95+** в продакшене.
+- **Гибридный рендеринг** — SSR для новостей и вакансий, SSG prerender для страниц ЖК и статики. Роутинг через `routeRules` в `nuxt.config.ts`.
+- **Трёхъязычность без i18n-библиотеки** — маршрутизация по URL-пути (`/`, `/kz`, `/en`), `hreflang` + `canonical` на каждой странице. Подробнее ниже.
+- **Prop-driven компоненты** — все секции (`HeroSection`, `QuizSection`, `MapSection`…) получают типизированный контент через props. Захардкоженного текста внутри компонентов нет.
+- **XSS-защита** — `useSanitize()` на базе DOMPurify фильтрует HTML из API перед вставкой через `v-html` в статьях новостей. Список разрешённых тегов и атрибутов — в `useSanitize.ts`.
+- **Квалификационный квиз** — многошаговый сбор данных о клиенте. Локализованные вопросы для каждого языка, ответы уходят менеджеру до звонка.
+- **SEO** — `useSeoMeta`, Schema.org, динамический `sitemap.xml` (новости + вакансии), `robots.txt` через Nitro server routes. Lighthouse 95+ в продакшене.
+- **Единая точка контакта** — телефон и адрес вынесены в `constants/contact.ts`, импортируются везде без дублирования.
+
+---
+
+## Подход к мультиязычности
+
+В проекте используется **файловая маршрутизация по языку** (`/`, `/kz/`, `/en/`) вместо `@nuxtjs/i18n`. Это осознанный выбор.
+
+Каждая языковая версия живёт в своих файлах независимо. Это позволяет для любой локали изменить структуру страницы, переставить секции или добавить уникальный блок, не затрагивая остальные языки. При общем i18n-роутинге все локали вынуждены иметь одинаковую структуру — здесь этого ограничения нет.
 
 ---
 
@@ -90,77 +122,96 @@ atamura-platform/
 | **Framework** | Vue 3 + Vite 5 |
 | **UI-слой** | Composition API, TypeScript |
 | **Состояние** | Pinia |
-| **HTTP** | Axios + interceptors (auth, refresh) |
+| **HTTP** | Axios + interceptors (авторизация, refresh) |
 | **Роутинг** | Vue Router 4 |
 | **i18n** | Собственный `useI18n` — RU / KK / EN, без сторонних библиотек |
 | **Деплой** | nginx:alpine, multi-stage Docker |
 
 ### Ключевые решения
 
-- **JWT + refresh без race condition** — единственный `refreshPromise` на уровне модуля дедуплицирует параллельные 401-ответы; все запросы ждут один refresh вместо того, чтобы отправлять несколько.
-- **RBAC** — три уровня доступа: `manager`, `admin`, `super_admin` с изоляцией данных.
-- **i18n без зависимостей** — `locales/ru.ts · kk.ts · en.ts` + тонкая обёртка `useI18n()`. Словари разнесены по файлам (по ~280 строк каждый), единый `i18n.ts` — 24 строки.
-- **Разделение ответственности** — `useLabels()` инкапсулирует все label-функции (`jkLabel`, `typeLabel`, `statusLabel`, `statusClass`, `formatDate`), которые раньше дублировались в 6+ view-файлах.
-- **XSS-защита в превью редактора** — `sanitizedPreview` computed через `DOMParser` снимает `<script>`, `<iframe>`, inline-обработчики событий и `javascript:`-атрибуты перед рендером `v-html`.
-- **CRUD по всем сущностям** — заявки, новости, отзывы, видео, документы, вакансии, менеджеры, ЖК, планировки, прогресс строительства.
+- **JWT + refresh без race condition** — единственный `refreshPromise` на уровне модуля дедуплицирует параллельные 401-ответы. Все запросы ждут один refresh вместо того, чтобы запускать несколько.
+- **i18n без зависимостей** — `locales/ru.ts · kk.ts · en.ts` + тонкая обёртка `useI18n()`. Словари разнесены по файлам (~280 строк каждый), сам `i18n.ts` — 24 строки.
+- **Разделение ответственности** — `useLabels()` инкапсулирует все функции работы с метками (`jkLabel`, `typeLabel`, `statusLabel`, `statusClass`, `formatDate`). Ни один view не занимается форматированием самостоятельно.
+- **XSS-защита в превью редактора** — `sanitizedPreview` через `DOMParser` убирает `<script>`, `<iframe>`, inline-обработчики и `javascript:`-ссылки перед рендером `v-html`.
+- **CRUD по всем сущностям** — заявки, новости, отзывы, видео, документы, вакансии, менеджеры, планировки, прогресс строительства.
 - **Реалтайм-уведомления** — новые заявки приходят в Telegram с полным контекстом клиента.
 
 ---
 
 ## Тестирование
 
-Покрытие строится по пирамиде: быстрые unit-тесты (нет браузера) → тесты компонентов (JSDOM/happy-dom) → E2E (реальный браузер).
+Покрытие строится по пирамиде: быстрые unit-тесты → тесты компонентов → E2E с реальным браузером.
 
 ### Инструменты
 
 | Слой | Инструмент | Применение |
 |---|---|---|
 | Unit | **Vitest** | Чистые функции, store, composables |
-| Компоненты | **Vue Test Utils** + Vitest | QuizSection, NewsEditor |
+| Компоненты | **Vue Test Utils** + Vitest | QuizSection |
 | E2E | **Playwright** | Quiz-флоу, языковой переключатель, авторизация |
-| CI | **GitHub Actions** | Запуск на каждый push и PR |
+| CI | **GitHub Actions** | Каждый push и PR, E2E с реальным бэкендом |
 
-### Что покрыто и почему
+### Что и почему покрыто
 
 **`admin/tests/unit/`**
 
-```
-utils/labels.test.ts   buildSlug, transliterate, useLabels (jkLabel, statusClass…)
-i18n.test.ts           useI18n, setLocale, fallback RU→key для пустых locale
-stores/auth.test.ts    login/logout/refreshToken — автомат состояний с моком axios
-```
+| Файл | Что проверяет |
+|---|---|
+| `utils/labels.test.ts` | `transliterate`, `buildSlug` (кириллица→латиница, усечение, спецсимволы), `useLabels` (jkLabel, typeLabel, statusClass, formatDate) |
+| `i18n.test.ts` | Переключение локали, корректные переводы в RU/KK/EN, возврат ключа для неизвестных строк |
+| `stores/auth.test.ts` | `login` / `logout` / `refreshToken` / `fetchMe` — полный автомат состояний с моком axios |
 
-- `buildSlug` гарантирует, что кириллица в заголовках не попадёт в URL.
-- auth-store тесты ловят ситуацию, когда logout не очищает localStorage.
+**`client/tests/unit/`**
 
-**`client/tests/`**
+| Файл | Что проверяет |
+|---|---|
+| `composables/useHomeContent.test.ts` | Все 3 локали × все секции страницы × кросс-локаль консистентность |
+| `composables/useApplicationForm.test.ts` | `submit`, `error`, `reset`; locale-aware сообщения об ошибках на трёх языках |
+| `composables/useQuizForm.test.ts` | `selectOption`, переходы по шагам, прогресс, `submitContact`, payload, `reset` |
+| `composables/useLocale.test.ts` | Определение языка по URL: `/kz/*` → `kk`, `/en/*` → `en`, всё остальное → `ru` |
+| `composables/formatPhone.test.ts` | Маска (`formatPhone`): пустой ввод, частичный, KZ-формат, обрезка до 15 цифр; валидация (`validatePhone`): все коды ошибок |
+| `stores/useUiStore.test.ts` | `openModal` / `closeModal` (тип, данные, состояние), `toggleMobileMenu`, `closeMobileMenu` |
 
-```
-unit/composables/useHomeContent.test.ts  Все 3 локали × все секции × кросс-локаль
-unit/composables/formatPhone.test.ts     Маска: пустой ввод, частичный, обрезка
-components/QuizSection.test.ts           Шаги, back-навигация, валидация, submit
-```
+**`client/tests/components/`**
 
-- `useHomeContent` гарантирует структурную целостность: добавление нового поля в `ru` без `kk`/`en` немедленно сломает тест.
-- Компонентный тест квиза покрывает всю UX-цепочку без поднятия Nuxt.
+| Файл | Что проверяет |
+|---|---|
+| `QuizSection.test.ts` | Шаги квиза, back-навигация, валидация телефона, submit, экран благодарности, прогресс-бар |
+
+**`client/tests/e2e/` и `admin/tests/e2e/`**
+
+| Файл | Что проверяет |
+|---|---|
+| `quiz.spec.ts` | Полный сценарий: вопросы → контактная форма → отправка → экран спасибо |
+| `language-switch.spec.ts` | `lang`-атрибут, `canonical`, `hreflang`, контент и локаль-специфичные ссылки на трёх языках |
+| `login.spec.ts` | Auth guard, форма входа, неверные данные, успешный логин |
+| `applications.spec.ts` | Таблица/пустое состояние, фильтр статусов, live-индикатор |
+
+**Почему именно это покрыто, а не всё подряд:**
+
+- `useHomeContent` ловит структурные несоответствия между локалями — добавишь поле в `ru` без `kk`/`en`, тест упадёт немедленно.
+- `useApplicationForm` и `useQuizForm` проверяют locale-aware сообщения об ошибках на трёх языках — не только happy path.
+- `useLocale` гарантирует корректное определение языка из URL без завязки на роутер Nuxt.
+- auth-store тесты ловят ситуацию, когда `logout` не очищает localStorage, или `fetchMe` падает молча вместо обновления профиля.
+- Презентационные компоненты (`HeroSection`, `StatsSection`, `AboutSection`) намеренно не покрыты unit-тестами — они не содержат логики, и их поведение проверяет E2E.
 
 ### Запуск тестов
 
 ```bash
 # Unit-тесты (без браузера, ~секунды)
-cd admin && npm test
+cd admin  && npm test
 cd client && npm test
 
-# Unit-тесты с покрытием
-cd admin && npm run test:coverage
+# С отчётом о покрытии
+cd admin  && npm run test:coverage
 cd client && npm run test:coverage
 
-# E2E (нужен build)
+# E2E (нужен build + запущенный бэкенд)
 cd client && npm run build && npm run test:e2e
 cd admin  && npm run build && npm run test:e2e
 
-# Интерактивный watch-режим при разработке
-cd admin && npm run test:watch
+# Watch-режим при разработке
+cd admin  && npm run test:watch
 cd client && npm run test:watch
 ```
 
@@ -187,12 +238,22 @@ push / PR
             │
             ├── e2e-client  ── nuxt build → playwright (quiz, lang-switch)
             └── e2e-admin   ── vite build → playwright (login, applications)
+                                    │
+                              Go backend (приватный репо)
+                              поднимается через docker-compose.ci.yml
+                              healthcheck → старт Playwright
 ```
 
-- `unit-*` и `typecheck` запускаются параллельно — E2E стартуют только после их прохождения.
+**Детали пайплайна:**
+
+- `unit-*` и `typecheck` запускаются параллельно. E2E стартует только после их прохождения.
 - `concurrency` отменяет устаревшие прогоны той же ветки.
+- **E2E работает с реальным бэкендом** — Go API поднимается из приватного репозитория через `docker-compose.ci.yml` с `healthcheck`. Playwright стартует только после того, как база данных и API полностью готовы — без `sleep` и гонок по времени.
 - Playwright Traces и скриншоты загружаются как артефакты при падении.
-- Секрет `TEST_ADMIN_PASSWORD` передаётся только в E2E-job, не доступен остальным шагам.
+- Секрет `TEST_ADMIN_PASSWORD` передаётся только в E2E-job через GitHub Secrets.
+
+> **Бэкенд-репозиторий приватный**, но при необходимости могу предоставить доступ или показать отдельные части (Go, PostgreSQL-миграции, Docker Compose).  
+> Напишите на [4samatov@gmail.com](mailto:4samatov@gmail.com).
 
 ---
 
@@ -202,7 +263,7 @@ push / PR
 # Клиентская часть
 cd client
 npm install
-cp .env.example .env    # задать NUXT_PUBLIC_API_BASE
+cp .env.example .env    # задать NUXT_PUBLIC_API_BASE и NUXT_PUBLIC_SITE_URL
 npm run dev             # http://localhost:3000
 
 # Административная панель
@@ -210,8 +271,6 @@ cd admin
 npm install
 npm run dev             # http://localhost:5173
 ```
-
-Полная инструкция по деплою с Docker и переменными окружения — в [кейсе проекта](https://studio.qbix.kz/cases/atamura-group/).
 
 ---
 
