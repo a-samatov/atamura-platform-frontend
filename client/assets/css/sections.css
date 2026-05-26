@@ -1,0 +1,54 @@
+/* ─── Shared section utilities ────────────────────────────────
+   Import in nuxt.config.ts → css: ['~/assets/css/sections.css']
+   ─────────────────────────────────────────────────────────── */
+
+.section-intro { margin-bottom: var(--space-10); }
+
+.section-intro--row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 0;
+}
+
+.section-title {
+  font-size: clamp(var(--text-2xl), 4vw, var(--text-4xl));
+  margin-top: var(--space-2);
+}
+
+.section-title-up {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.section-desc {
+  margin-top: var(--space-3);
+  font-size: var(--text-base);
+  color: var(--color-gray-600);
+  max-width: 560px;
+}
+
+.section-action {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-10);
+}
+
+/* ─── News grid ─────────────────────────────────────────────── */
+.news-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-6);
+  margin-top: var(--space-10);
+}
+
+/* ─── Responsive ────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .news-grid { grid-template-columns: 1fr; }
+  .section-intro--row { flex-direction: column; align-items: flex-start; gap: var(--space-4); }
+}
+
+@media (max-width: 768px) {
+  .news-grid { grid-template-columns: repeat(2, 1fr); }
+}

@@ -1,0 +1,29 @@
+# ── Node / Nuxt ───────────────────────────────────────────────
+node_modules/
+.nuxt/
+.output/
+dist/
+*.log
+
+# ── OS ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Env & secrets — never commit real values ──────────────────
+.env
+.env.*
+!.env.example
+
+# ── Backend — lives in its own private repository ─────────────
+# The /backend folder and the production docker-compose are maintained in
+# github.com/a-samatov/atamura-platform-backend (private).
+# They are present locally for Docker Compose but must never
+# be pushed to this public repository.
+backend/
+docker-compose.yml
+# docker-compose.ci.yml is intentionally tracked — used by the admin E2E job
+
+# ── Local dev — only needed by the repo owner ─────────────────
+Makefile
+docker-compose.local.yml
+.env.local.example

@@ -1,0 +1,72 @@
+# CI-only compose file used by the admin E2E job in GitHub Actions.
+# Pulls the backend image from GHCR — no backend source code needed here.
+#
+# Usage (handled automatically by the CI workflow):
+#   docker compose -f docker-compose.ci.yml up -d --wait
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: atamura_test
+      POSTGRES_USER: atamura_user
+      POSTGRES_PASSWORD: test_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atamura_user"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    networks:
+      - ci
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - ci
+
+  backend:
+    # Image is built by atamura-platform-backend CI and pushed to GHCR.
+    # The entrypoint automatically runs migrations before starting.
+    image: ghcr.io/a-samatov/atamura-platform-backend:latest
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: atamura_test
+      DB_USER: atamura_user
+      DB_PASSWORD: test_password
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ""
+      JWT_SECRET: ci-test-jwt-secret-at-least-32-characters-long
+      JWT_REFRESH_SECRET: ci-test-refresh-secret-at-least-32-chars-long
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL: 168h
+      APP_ENV: test
+      BACKEND_PORT: "8080"
+      # CORS must allow the Vite preview origin (localhost:4173)
+      FRONTEND_URL: "http://localhost:4173"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8080/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    networks:
+      - ci
+
+networks:
+  ci:
+    driver: bridge
