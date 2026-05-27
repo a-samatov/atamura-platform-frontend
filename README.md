@@ -95,7 +95,7 @@ atamura-platform/
 - **Prop-driven компоненты** — все секции (`HeroSection`, `QuizSection`, `MapSection`…) получают типизированный контент через props. Захардкоженного текста внутри компонентов нет.
 - **XSS-защита** — `useSanitize()` на базе DOMPurify фильтрует HTML из API перед вставкой через `v-html` в статьях новостей. Список разрешённых тегов и атрибутов — в `useSanitize.ts`.
 - **Квалификационный квиз** — многошаговый сбор данных о клиенте. Локализованные вопросы для каждого языка, ответы уходят менеджеру до звонка.
-- **SEO** — `useSeoMeta`, Schema.org, динамический `sitemap.xml` (новости + вакансии), `robots.txt` через Nitro server routes. Lighthouse 95+ в продакшене.
+- **SEO** — `useSeoMeta`, Schema.org, динамический `sitemap.xml` (новости + вакансии), `robots.txt` через Nitro server routes.
 - **Единая точка контакта** — телефон и адрес вынесены в `constants/contact.ts`, импортируются везде без дублирования.
 
 ---
@@ -301,9 +301,3 @@ Nuxt 3 SSR           nginx:alpine
 
 **Амандық Саматов**  
 [GitHub](https://github.com/a-samatov) · [Email](mailto:4samatov@gmail.com) · [Кейс](https://studio.qbix.kz/cases/atamura-group/)
-
----
-
-<div align="center">
-<sub>Продакшн-проект · 2026 · Алматы, Казахстан</sub>
-</div>
